@@ -31,14 +31,19 @@ export default function WallPage({ params }: WallPageProps) {
       setError(null)
       const wallData = await getWallWithPosts(id, pin)
       if (!wallData) {
-        setError("Wall not found or you don't have permission to access it")
+        // Check if this is a private wall and user doesn't have access
+        if (pin) {
+          setError("Invalid PIN. Please check your PIN and try again.")
+        } else {
+          setError("Wall not found or you don't have permission to access it")
+        }
       } else {
         setWall(wallData)
         setError(null)
       }
     } catch (err) {
       console.error("Error loading wall:", err)
-      setError("Failed to load wall")
+      setError("Failed to load wall. Please try again.")
     } finally {
       setLoading(false)
     }

@@ -30,7 +30,7 @@ export interface Post {
 }
 
 export async function getWallWithPosts(wallId: string, pin?: string): Promise<WallWithPosts | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // Get current user
   const {
@@ -47,10 +47,26 @@ export async function getWallWithPosts(wallId: string, pin?: string): Promise<Wa
   // Check access permissions
   const isCreator = user && wall.creator_id === user.id
   const isPublic = wall.is_public
-  const hasValidPin = !wall.is_public && wall.pin === pin
+  
+  // For private walls, check if user has valid PIN access
+  let hasValidPin = false
+  if (!isPublic && pin && wall.pin) {
+    // Normalize PINs for comparison (remove any whitespace, ensure string comparison)
+    const normalizedPin = pin.toString().trim()
+    const normalizedWallPin = wall.pin.toString().trim()
+    hasValidPin = normalizedPin === normalizedWallPin
+  }
 
   // If it's a private wall and user doesn't have access, return null
   if (!isPublic && !isCreator && !hasValidPin) {
+    console.log("Access denied for private wall:", { 
+      wallId, 
+      isPublic, 
+      isCreator, 
+      hasValidPin, 
+      providedPin: pin, 
+      wallPin: wall.pin 
+    })
     return null
   }
 
@@ -128,7 +144,7 @@ export async function getWallWithPosts(wallId: string, pin?: string): Promise<Wa
 }
 
 export async function createPost(wallId: string, content: string, pin?: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // Validate content
   if (!content || content.trim().length === 0) {
@@ -165,7 +181,15 @@ export async function createPost(wallId: string, content: string, pin?: string) 
   // Check access permissions
   const isCreator = user && wall.creator_id === user.id
   const isPublic = wall.is_public
-  const hasValidPin = !wall.is_public && wall.pin === pin
+  
+  // For private walls, check if user has valid PIN access
+  let hasValidPin = false
+  if (!isPublic && pin && wall.pin) {
+    // Normalize PINs for comparison (remove any whitespace, ensure string comparison)
+    const normalizedPin = pin.toString().trim()
+    const normalizedWallPin = wall.pin.toString().trim()
+    hasValidPin = normalizedPin === normalizedWallPin
+  }
 
   if (!isPublic && !isCreator && !hasValidPin) {
     return { error: "You don't have permission to post to this wall" }
@@ -191,7 +215,7 @@ export async function createPost(wallId: string, content: string, pin?: string) 
 }
 
 export async function deletePost(postId: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // Get current user
   const {

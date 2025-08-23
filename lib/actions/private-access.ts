@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 
 export async function accessPrivateWall(prevState: any, formData: FormData) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const pin = formData.get("pin")?.toString()
 
@@ -21,8 +21,8 @@ export async function accessPrivateWall(prevState: any, formData: FormData) {
     // Find wall with matching PIN
     const { data: wall, error } = await supabase
       .from("walls")
-      .select("id, name, is_public, expires_at")
-      .eq("pin", pin)
+      .select("id, name, is_public, expires_at, pin")
+      .eq("pin", pin.trim())
       .eq("is_public", false)
       .single()
 
@@ -44,7 +44,7 @@ export async function accessPrivateWall(prevState: any, formData: FormData) {
 }
 
 export async function findWallByPin(pin: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   if (!pin || pin.length !== 6 || !/^\d{6}$/.test(pin)) {
     return null
@@ -53,7 +53,7 @@ export async function findWallByPin(pin: string) {
   const { data: wall, error } = await supabase
     .from("walls")
     .select("id, name, description, is_public, expires_at")
-    .eq("pin", pin)
+    .eq("pin", pin.trim())
     .eq("is_public", false)
     .single()
 

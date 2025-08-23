@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,9 +12,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { ArrowLeft, Share2, Globe, Lock, Calendar, Copy, Check } from "lucide-react"
+import { ArrowLeft, Share2, Globe, Lock, Calendar, Copy, Check, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { generateQRCodeUrl } from "@/lib/utils/qr-code"
+import { generateShortUrl } from "@/lib/utils/short-url"
 import type { WallWithPosts } from "@/lib/actions/wall-data"
 
 interface WallHeaderProps {
@@ -24,13 +25,35 @@ interface WallHeaderProps {
 
 export function WallHeader({ wall, pin }: WallHeaderProps) {
   const [copied, setCopied] = useState(false)
+  const [shortUrl, setShortUrl] = useState<string>("")
+  const [isGeneratingShortUrl, setIsGeneratingShortUrl] = useState(false)
+  const [showShortUrl, setShowShortUrl] = useState(false)
 
-  const shareUrl =
+  const longUrl =
     typeof window !== "undefined" ? `${window.location.origin}/wall/${wall.id}${pin ? `?pin=${pin}` : ""}` : ""
 
-  const handleCopyLink = async () => {
+  // Generate short URL when component mounts
+  useEffect(() => {
+    const generateUrl = async () => {
+      setIsGeneratingShortUrl(true)
+      try {
+        const result = await generateShortUrl(wall.id, wall.name, pin)
+        if (result) {
+          setShortUrl(result.shortUrl)
+        }
+      } catch (error) {
+        console.error("Failed to generate short URL:", error)
+      } finally {
+        setIsGeneratingShortUrl(false)
+      }
+    }
+
+    generateUrl()
+  }, [wall.id, wall.name, pin])
+
+  const handleCopyLink = async (url: string) => {
     try {
-      await navigator.clipboard.writeText(shareUrl)
+      await navigator.clipboard.writeText(url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (error) {
@@ -74,19 +97,60 @@ export function WallHeader({ wall, pin }: WallHeaderProps) {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Short URL */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Wall Link</label>
+                <label className="text-sm font-medium flex items-center">
+                  <span className="bg-green-600 text-white px-2 py-1 rounded text-xs mr-2">RECOMMENDED</span>
+                  Short Link
+                </label>
                 <div className="flex space-x-2">
                   <input
                     type="text"
-                    value={shareUrl}
+                    value={isGeneratingShortUrl ? "Generating..." : shortUrl || "Failed to generate"}
                     readOnly
-                    className="flex-1 bg-gray-800 border-gray-700 rounded px-3 py-2 text-sm"
+                    className="flex-1 bg-gray-800 border-gray-700 rounded px-3 py-2 text-sm font-mono"
+                    placeholder={isGeneratingShortUrl ? "Generating short URL..." : "Short URL will appear here"}
                   />
-                  <Button onClick={handleCopyLink} size="sm" className="bg-purple-600 hover:bg-purple-700">
+                  <Button 
+                    onClick={() => handleCopyLink(shortUrl)} 
+                    size="sm" 
+                    className="bg-green-600 hover:bg-green-700"
+                    disabled={!shortUrl || isGeneratingShortUrl}
+                  >
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
+                <p className="text-xs text-gray-400">
+                  {isGeneratingShortUrl ? (
+                    <span className="flex items-center">
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      Generating secure short link...
+                    </span>
+                  ) : (
+                    "Short, secure, and branded with your wall name"
+                  )}
+                </p>
+              </div>
+
+              {/* Long URL (fallback) */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">Full Link (Fallback)</label>
+                <div className="flex space-x-2">
+                  <input
+                    type="text"
+                    value={longUrl}
+                    readOnly
+                    className="flex-1 bg-gray-800 border-gray-700 rounded px-3 py-2 text-sm text-gray-400"
+                  />
+                  <Button 
+                    onClick={() => handleCopyLink(longUrl)} 
+                    size="sm" 
+                    className="bg-gray-600 hover:bg-gray-700"
+                  >
+                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500">Use this if the short link doesn't work</p>
               </div>
 
               {!wall.is_public && pin && (
@@ -94,12 +158,19 @@ export function WallHeader({ wall, pin }: WallHeaderProps) {
                   <label className="text-sm font-medium">QR Code</label>
                   <div className="flex justify-center p-4 bg-white rounded">
                     <img
-                      src={generateQRCodeUrl(wall.id, pin) || "/placeholder.svg"}
+                      src={generateQRCodeUrl(shortUrl || longUrl, pin) || "/placeholder.svg"}
                       alt="QR Code for wall access"
                       className="w-48 h-48"
                     />
                   </div>
-                  <p className="text-xs text-gray-400 text-center">Scan this QR code to access the private wall</p>
+                  <p className="text-xs text-gray-400 text-center">
+                    Scan this QR code to access the private wall
+                    {shortUrl && (
+                      <span className="block mt-1 text-green-400">
+                        Uses secure short link
+                      </span>
+                    )}
+                  </p>
                 </div>
               )}
             </div>
