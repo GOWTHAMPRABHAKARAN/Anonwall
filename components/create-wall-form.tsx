@@ -1,7 +1,6 @@
 "use client"
 
-import { useActionState, useState, useEffect } from "react"
-import { useFormStatus } from "react-dom"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,39 +11,68 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Loader2, Globe, Lock, Calendar, Tag, MessageSquare } from "lucide-react"
 import { createWall } from "@/lib/actions/create-wall"
 
-function SubmitButton() {
-  const { pending } = useFormStatus()
-
+function SubmitButton({ isSubmitting }: { isSubmitting: boolean }) {
   return (
     <Button
       type="submit"
-      disabled={pending}
-      className="w-full bg-purple-600 hover:bg-purple-700 text-white py-6 text-lg font-medium"
+      disabled={isSubmitting}
+      className={`w-full py-6 text-lg font-medium transition-all duration-300 ${
+        isSubmitting
+          ? "bg-purple-600/80 text-white cursor-not-allowed"
+          : "bg-purple-600 hover:bg-purple-700 text-white hover:scale-[1.02] active:scale-[0.98]"
+      }`}
     >
-      {pending ? (
+      {isSubmitting ? (
         <>
           <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-          Creating Wall...
+          Processing...
         </>
       ) : (
-        "Create Wall"
+        <>
+          <Globe className="mr-2 h-5 w-5" />
+          Create Wall
+        </>
       )}
     </Button>
   )
 }
 
 export function CreateWallForm() {
-  const [state, formAction] = useActionState(createWall, null)
   const [isPublic, setIsPublic] = useState(true)
   const [hasExpiry, setHasExpiry] = useState(false)
   const [threadingEnabled, setThreadingEnabled] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<{ wallId: string } | null>(null)
   const router = useRouter()
 
   useEffect(() => {
-    if (state?.success && state?.wallId) {
-      router.push(`/wall/${state.wallId}`)
+    if (success?.wallId) {
+      router.push(`/wall/${success.wallId}`)
     }
-  }, [state, router])
+  }, [success, router])
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setError(null)
+    setSuccess(null)
+
+    try {
+      const formData = new FormData(e.currentTarget)
+      const result = await createWall(null, formData)
+      
+      if (result?.error) {
+        setError(result.error)
+      } else if (result?.success && result?.wallId) {
+        setSuccess({ wallId: result.wallId })
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">
@@ -56,14 +84,14 @@ export function CreateWallForm() {
           </CardDescription>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
-          <form action={formAction} className="space-y-4 sm:space-y-6">
-            {state?.error && (
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+            {error && (
               <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-3 sm:px-4 py-2 sm:py-3 rounded text-sm">
-                {state.error}
+                {error}
               </div>
             )}
 
-            {state?.success && (
+            {success && (
               <div className="bg-green-500/10 border border-green-500/50 text-green-400 px-3 sm:px-4 py-2 sm:py-3 rounded text-sm">
                 Wall created successfully! Redirecting...
               </div>
@@ -81,7 +109,8 @@ export function CreateWallForm() {
                 placeholder="e.g., Team Feedback, Q&A Session"
                 required
                 maxLength={255}
-                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-400 focus:border-purple-500 text-sm sm:text-base"
+                disabled={isSubmitting}
+                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-400 focus:border-purple-500 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -96,7 +125,8 @@ export function CreateWallForm() {
                 placeholder="Describe the purpose and context of this wall..."
                 maxLength={500}
                 rows={3}
-                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-400 focus:border-purple-500 resize-none text-sm sm:text-base"
+                disabled={isSubmitting}
+                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-400 focus:border-purple-500 resize-none text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <p className="text-xs sm:text-sm text-gray-500">0/500 characters</p>
             </div>
@@ -112,7 +142,8 @@ export function CreateWallForm() {
                 name="tags"
                 type="text"
                 placeholder="e.g., feedback, work, team, anonymous"
-                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-400 focus:border-purple-500 text-sm sm:text-base"
+                disabled={isSubmitting}
+                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-400 focus:border-purple-500 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <p className="text-xs sm:text-sm text-gray-500">
                 Separate tags with commas. Helps others discover your wall.
@@ -139,7 +170,8 @@ export function CreateWallForm() {
                   id="isPublic"
                   checked={isPublic}
                   onCheckedChange={setIsPublic}
-                  className="data-[state=checked]:bg-green-600"
+                  disabled={isSubmitting}
+                  className="data-[state=checked]:bg-green-600 disabled:opacity-50"
                 />
               </div>
               <input type="hidden" name="isPublic" value={isPublic.toString()} />
@@ -171,7 +203,8 @@ export function CreateWallForm() {
                   name="hasExpiry"
                   checked={hasExpiry}
                   onCheckedChange={setHasExpiry}
-                  className="data-[state=checked]:bg-purple-600"
+                  disabled={isSubmitting}
+                  className="data-[state=checked]:bg-purple-600 disabled:opacity-50"
                 />
               </div>
               <input type="hidden" name="hasExpiry" value={hasExpiry.toString()} />
@@ -186,7 +219,8 @@ export function CreateWallForm() {
                     name="expiryDate"
                     type="datetime-local"
                     min={new Date().toISOString().slice(0, 16)}
-                    className="bg-gray-800 border-gray-700 text-white focus:border-purple-500 text-sm sm:text-base"
+                    disabled={isSubmitting}
+                    className="bg-gray-800 border-gray-700 text-white focus:border-purple-500 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               )}
@@ -208,7 +242,8 @@ export function CreateWallForm() {
                   id="threadingEnabled"
                   checked={threadingEnabled}
                   onCheckedChange={setThreadingEnabled}
-                  className="data-[state=checked]:bg-blue-600"
+                  disabled={isSubmitting}
+                  className="data-[state=checked]:bg-blue-600 disabled:opacity-50"
                 />
               </div>
               <input type="hidden" name="threadingEnabled" value={threadingEnabled.toString()} />
@@ -223,7 +258,7 @@ export function CreateWallForm() {
               )}
             </div>
 
-            <SubmitButton />
+            <SubmitButton isSubmitting={isSubmitting} />
           </form>
         </CardContent>
       </Card>

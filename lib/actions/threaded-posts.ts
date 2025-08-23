@@ -57,7 +57,7 @@ export async function createReply(wallId: string, parentPostId: string, content:
         wall_id: wallId,
         parent_post_id: parentPostId,
         content: content.trim(),
-        anonymous_author: `Anon${Math.floor(Math.random() * 1000)}`,
+        anonymous_author: "Anonymous",
       })
       .select()
       .single()

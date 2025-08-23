@@ -58,16 +58,14 @@ export function WallCard({ wall }: WallCardProps) {
               {wall.tags.slice(0, 4).map((tag) => (
                 <Badge
                   key={tag}
-                  variant="secondary"
-                  className="text-xs bg-secondary/10 text-secondary hover:bg-secondary/20 border border-secondary/20 px-2 py-1 transition-all duration-200 hover:scale-105 cursor-default"
+                  className="text-xs bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 px-2 py-1 transition-all duration-200 hover:scale-105 cursor-default font-medium"
                 >
                   {tag}
                 </Badge>
               ))}
               {wall.tags.length > 4 && (
                 <Badge
-                  variant="secondary"
-                  className="text-xs bg-muted/50 text-muted-foreground border border-border px-2 py-1 hover:bg-muted transition-colors duration-200"
+                  className="text-xs bg-accent/10 text-accent hover:bg-accent/20 border border-accent/30 px-2 py-1 transition-colors duration-200 font-medium"
                 >
                   +{wall.tags.length - 4} more
                 </Badge>

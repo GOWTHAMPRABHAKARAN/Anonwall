@@ -175,7 +175,7 @@ export async function createPost(wallId: string, content: string, pin?: string) 
   const { error: insertError } = await supabase.from("posts").insert({
     wall_id: wallId,
     content: content.trim(),
-    anonymous_author: `Anonymous ${Math.floor(Math.random() * 1000)}`,
+          anonymous_author: "Anonymous",
   })
 
   if (insertError) {
